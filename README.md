@@ -2,10 +2,9 @@
 
 1) Build a microservices app i.e decoupled services with specific objectives. The Frontend that responsible for display the application pages needs to interact with
 different microservices through the API gateway to get the desired data. The main components for the movies application are:
-  -Horror movies service : A backend service that returns the list of horror movies
-  -Action movies service : A backend service provides the list of action movies.
-  -UI/API Gateway : Includes the user interface (UI) that the visitor uses to access a particular type of movie as well as a gateway that functions as middleware before the request is made to
-backend services.
+  -Horror movies service(Node Js) : A backend service that returns the list of horror movies
+  -Action movies service(SpringBoot) : A backend service provides the list of action movies.
+  -UI/API Gateway (ReactJs & Laravel) Includes the user interface (UI) that the visitor uses to access a particular type of movie as well as a gateway that functions as middleware before the request is made to backend services.
 Result: https://user-images.githubusercontent.com/40791467/194779825-efaf9944-d90d-4b91-9cdc-9fe3f72bb265.PNG
 
 2) Create and build dockerfiles for each component of our application
