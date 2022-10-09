@@ -1,0 +1,84 @@
+trigger:
+- master
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  phpVersion: 8
+  imageRepo: hajer23/gateway
+  DockerHubConnection: dockerHub
+  tag: '$(Build.BuildId)'
+  dockerHubSecret: hajerfrigui
+  dockerRegistryEndpoint: 'dockerHub'
+ 
+  
+
+#reference to HorrorMovies Repository to use the template folder  
+resources:
+  repositories:
+  - repository: Docker
+    type: git
+    name: Horror_Movies/Horror_Movies
+    ref: 'refs/heads/master'
+
+stages:
+######## Build stage ###################
+- stage: Build
+  displayName: Build 
+  jobs:
+    - job: Build
+      displayName: Build
+      pool:
+        vmImage: ubuntu-latest
+      steps:
+
+#Docker Login & Build & Push Image
+      - template: templates/DockerBuildAndPush.yml@Docker
+        parameters:
+            DockerHubConnection: ${{ variables.DockerHubConnection }}
+            tag: ${{ variables.tag }}              
+            imageRepo: ${{ variables.imageRepo }}
+   
+
+      - template: templates/PublishManifests.yml@Docker
+     
+
+
+
+
+ ########## Deploy to production Environment ############
+
+- stage: Deploy_Production
+  displayName: Deploy to Production
+  dependsOn: Build
+  variables:
+   k8snamespace: default
+   manifests: |
+    $(Pipeline.Workspace)/manifests/frontend.yaml
+    $(Pipeline.Workspace)/manifests/ingress.yml
+  jobs:
+    - deployment: Deploy 
+      displayName: Deploy to AKS
+      environment: 'k8sProduction.default'
+      pool:
+          vmImage: ubuntu-latest
+      strategy:
+       runOnce:
+         deploy:
+          steps:
+          
+          - template: templates/DownloadManifests.yml@Docker
+        
+          - template: templates/CreateSecretForAKS.yml@Docker
+            parameters:
+                k8snamespace: ${{variables.k8snamespace}}
+                secretName: ${{ variables.dockerHubSecret }}
+                dockerRegistryEndpoint: ${{ variables.dockerRegistryEndpoint }}
+        
+          - template: templates/DeployToAks.yml@Docker
+            parameters:
+                k8snamespace: ${{ variables.k8snamespace }}
+                manifests: ${{ variables.manifests }}
+                imageRepo: ${{ variables.imageRepo }}
+                tag: ${{ variables.tag }}

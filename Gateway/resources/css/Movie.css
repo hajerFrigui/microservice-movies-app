@@ -1,0 +1,107 @@
+*,
+*::after,
+*::before {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+.App {
+  background-color: #282c34;
+  min-height: 100vh;
+  color: white;
+  padding: 5%;
+}
+.App-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 2rem;
+  min-height: 80vh;
+}
+
+.image--container {
+  position: relative;
+  perspective: 1000;
+  backface-visibility: hidden;
+  height: 100%;
+  transition: transform 0.5s;
+}
+
+.image--container:hover {
+  cursor: pointer;
+  transform: scale(1.05) translateY(-1rem);
+}
+.image--face {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  overflow: hidden;
+  transition: transform 1s, z-index 1s, box-shadow 1s;
+}
+
+.image--front {
+  z-index: 2;
+  transform: rotateY(0deg);
+}
+
+.image--back {
+  padding: 0.5rem 1rem;
+  z-index: 1;
+  background-color: #282c34;
+  transform: rotateY(180deg);
+}
+
+.image--container:hover .image--front {
+  z-index: 1;
+  transform: rotateY(180deg);
+}
+
+.image--container:hover .image--back {
+  z-index: 2;
+  transform: rotateY(0deg);
+  box-shadow: 1px 1px 5px #fff;
+}
+
+.image--img {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+
+.image--title {
+  letter-spacing: 2px;
+  text-align: center;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+.image--genre {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: red;
+  margin: 0;
+  margin-bottom: 1rem;
+}
+
+.btn {
+  outline: 0;
+  border: 0;
+  padding: 1rem 2rem;
+  background-color: #ff9982;
+  max-width: 15rem;
+  height: 3rem;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 1.2rem;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: transform 0.2s;
+  margin: 0 1rem 2rem;
+}
+.btn:hover {
+  transform: scale(1.04);
+}
+.btn::first-letter {
+  text-transform: uppercase;
+}

@@ -1,0 +1,55 @@
+#cretae an object of type container 
+#rq: we can combine the deployment , cluster ip config file in one file
+apiVersion: apps/v1
+kind: Deployment
+#name this object
+metadata:
+  name: horror-movies-deployment
+spec:
+  replicas: 1 # number of pods that deployment must create which will be identical
+  selector:
+#when the api master create the pods that the deployment needs . the deployment will  find them using the selector 
+#=>the deployment will look for objects that have this label to get a  hand on them
+    matchLabels:
+      app: horror
+#list the configuration that will be used inside every pod that is created by this deployment which are one replica only 
+  template:
+    metadata:
+# every pod will have a label of componenet
+      labels:
+        app: horror # every pod have the same label  that the deployement have 
+    spec:
+#containers in those pods 
+      containers:
+        - name: horror-movies
+          image: hajer23/horror-movies
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "200m"
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+          ports:
+            - containerPort: 4000
+#It is a good practice to declare resource requests and limits for both memory and cpu for each container. This helps to schedule the container
+# to a node that has available resources for your Pod, and also so that your Pod does not use resources that other Pods needs - therefore the "this could starve other processes" message.
+
+---
+#make our set of pods accessible by any other object inside   the cluster(node) only ( if an object potside the node we use ingress or load balancer)
+#create an objet de type service and name it 
+apiVersion: v1
+kind: Service
+metadata:
+  name: horror-movies-service
+spec:
+  
+#create a selector so that this service that we are creating knows what set of pods it is supposed to be providing access to 
+  selector:
+    app: horror
+    #I don’t need to mention the the service i am creating is of type cluster ip since its by default
+  ports:
+    - protocol: TCP
+    #when we try to access the horroMovies deployment they will try to access the "port"  4000  and it will  redirect it  to 4000 inside the container
+      port: 4000
+      targetPort: 4000

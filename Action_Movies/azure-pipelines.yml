@@ -1,0 +1,106 @@
+trigger:
+- master
+variables:
+  imageRepo: hajer23/action-movies
+  DockerHubConnection: dockerHub
+  tag: '$(Build.BuildId)'
+  k8snamespace: default
+
+#reference to HorrorMovies Repository to use the template folder  
+resources:
+  repositories:
+  - repository: Docker
+    type: git
+    name: Horror_Movies/Horror_Movies
+    ref: 'refs/heads/master'
+
+stages:
+#################### Build Stage ##################
+- stage: Build
+  displayName: Build image
+  jobs:
+    - job: Build
+      displayName: Build
+      pool:
+        vmImage: ubuntu-latest
+    
+      steps:
+      - task: Maven@3
+        inputs:
+          mavenPomFile: 'pom.xml'
+          mavenOptions: '-Xmx3072m'
+          javaHomeOption: 'JDKVersion'
+          jdkVersionOption: '1.8'
+          jdkArchitectureOption: 'x64'
+          goals: 'package' 
+    
+       #Docker Login & Build & Push Image
+      - template: templates/DockerBuildAndPush.yml@Docker
+        parameters:
+            DockerHubConnection: ${{ variables.DockerHubConnection }}
+            tag: ${{ variables.tag }}          
+            imageRepo: ${{ variables.imageRepo }}
+      
+      - template: templates/PublishManifests.yml@Docker
+      # - task: PublishPipelineArtifact@1
+      #   inputs:
+      #     targetPath: '$(Pipeline.Workspace)/s/k8s'
+      #     artifact: 'manifests'
+      #     publishLocation: 'pipeline'
+  
+              
+################# Deployment stage ###############################
+
+- stage: Deploy
+  displayName: Deploy to Production
+  dependsOn: Build
+  variables:
+   dockerHubSecret: hajerfrigui
+   dockerRegistryEndpoint: 'dockerHub'
+   manifests: '$(Pipeline.Workspace)/manifests/action-movies.yaml'
+  jobs:
+    - deployment: Deploy
+      displayName: Deploy to AKS
+      environment: 'k8sProduction.default'
+      pool:
+          vmImage: ubuntu-latest
+      strategy:
+       runOnce:
+         deploy:
+          steps:
+          
+          - template: templates/DownloadManifests.yml@Docker
+          # - task: DownloadPipelineArtifact@2
+          #   inputs:
+          #     buildType: 'current'
+          #     artifactName: 'manifests'
+          #     targetPath: '$(Pipeline.Workspace)/manifests'
+          
+          - template: templates/CreateSecretForAKS.yml@Docker
+            parameters:
+                k8snamespace: ${{variables.k8snamespace}}
+                secretName: ${{ variables.dockerHubSecret }}
+                dockerRegistryEndpoint: ${{ variables.dockerRegistryEndpoint }}
+          # - task: KubernetesManifest@0
+          #   inputs:
+          #     action: 'createSecret'
+          #     namespace: 'default'
+          #     secretType: 'dockerRegistry'
+          #     secretName: '$(dockerhubsecret)'
+          #     dockerRegistryEndpoint: 'dockerHub'
+        
+          - template: templates/DeployToAks.yml@Docker
+            parameters:
+                k8snamespace: ${{variables.k8snamespace}}
+                manifests: ${{ variables.manifests }}
+                imageRepo: ${{variables.imageRepo }}
+                tag: ${{variables.tag }}
+              
+          # - task: KubernetesManifest@0
+          #   inputs:
+          #     action: 'deploy'
+          #     namespace: 'default'
+          #     manifests: '$(Pipeline.Workspace)/manifests/action-movies.yaml'
+          #     containers: |
+          #       $(imageRepo):$(tag)
+     

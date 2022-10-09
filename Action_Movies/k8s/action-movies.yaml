@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: action-movies-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: action
+  template:
+    metadata:
+      labels:
+        app: action
+    spec: 
+      containers:
+        - name: action-movies
+          image: hajer23/action-movies
+          resources:
+            limits:
+              memory: "300Mi"
+              cpu: "400m"
+            requests:
+              memory: "150Mi"
+              cpu: "200m"
+          ports:
+            - containerPort: 7000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: action-movies-service
+spec:
+  selector:
+    app: action
+  ports:
+    - protocol: TCP
+      port: 7000
+      targetPort: 7000

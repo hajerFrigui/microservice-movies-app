@@ -1,0 +1,138 @@
+# trigger:
+# - master
+
+resources:
+- repo: self
+
+variables:
+  imageRepo: hajer23/horror-movies
+  tag: '$(Build.BuildId)'
+  DockerHubConnection: DockerRegistry
+  k8snamespace: default
+  
+  
+stages:
+- stage: Build
+  displayName: Unit Test & Build & Push Image to DockerHub
+  jobs:
+
+   
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: ubuntu-latest
+
+    steps:
+    
+#Install dependancies & run unit test
+    - script: |
+       npm install
+       npm test
+      displayName: Install Npm Packages & Run Unit Test
+  
+#Publish Test result in Azure pipeline  
+    - task: PublishTestResults@2
+      enabled: true
+      displayName: Publish Test Results
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/tests/Test.xml'
+        mergeTestResults: true
+  
+
+    #Build & Push image to DockerHub
+    - template: templates/DockerBuildAndPush.yml
+      parameters:
+          DockerHubConnection: ${{ variables.DockerHubConnection }}
+          tag: ${{ variables.tag }}             
+          imageRepo: ${{ variables.imageRepo}}
+    
+    - template: templates/PublishManifests.yml
+    
+    # - task: PublishPipelineArtifact@1
+    #   inputs:
+    #     targetPath: '$(Pipeline.Workspace)/s/k8s'
+    #     artifact: 'manifests'
+    #     publishLocation: 'pipeline'
+    # - task: Docker@2
+    #   inputs:
+    #     containerRegistry: 'DockerRegistry'
+    #     repository: '$(imageRepo)'
+    #     command: 'buildAndPush'
+    #     Dockerfile: '**/Dockerfile'
+    #     tags: |
+    #       $(tag)
+
+    # #CI pipelines can acces the repo/CD pipeline should not access external repo and specially  the repo(use the publish artifact task to grab only the k8s files
+    # #this task will publish those yaml files as artifact and made them available to any other stage after this stage  with the name manifests
+    # #then in the CD pipeline we will download the artifacts
+  
+
+
+
+- stage: Deploy
+  displayName: Deploy to Production
+  dependsOn: Build
+  variables:
+   dockerHubSecret: hajerfrigui
+   dockerRegistryEndpoint: 'DockerRegistry'
+   manifests: '$(Pipeline.Workspace)/manifests/horror-movies.yaml'
+  jobs:
+    - deployment: Deploy
+      displayName: Deploy to AKS
+      
+#Add environment that you want to deploy in it  : name of the env. name of namespace
+      environment: 'k8sProduction.default'
+      pool:
+        vmImage: ubuntu-latest
+
+#The deployment job needs a strategy because it is not a normal job
+      strategy:
+       runOnce:
+         deploy:
+          steps: 
+
+            - template: templates/DownloadManifests.yml
+
+            # #Create a secret for the cluster to login to docker hub
+
+            - template: templates/CreateSecretForAKS.yml
+              parameters:
+                k8snamespace: ${{variables.k8snamespace}}
+                secretName: ${{ variables.dockerHubSecret }}
+                dockerRegistryEndpoint: ${{ variables.dockerRegistryEndpoint }}
+
+            - template: templates/DeployToAks.yml
+              parameters:
+                k8snamespace: ${{variables.k8snamespace}}
+                manifests: ${{ variables.manifests }}
+                imageRepo: ${{variables.imageRepo }}
+                tag: ${{variables.tag }}
+
+                
+#           - task: DownloadPipelineArtifact@2
+#             inputs:
+#               buildType: 'current'
+#               artifactName: 'manifests' #we should use the same name
+#               targetPath: '$(Pipeline.Workspace)/manifests' #we downloaded in a folder with the same name
+
+
+
+#           - task: KubernetesManifest@0
+#             inputs:
+#               action: 'createSecret'
+#               namespace: 'default'
+#               secretType: 'dockerRegistry'
+#               secretName: '$(dockerhubsecret)'
+#               dockerRegistryEndpoint: 'DockerRegistry'
+
+#deploy to Aks
+     
+               
+#           - task: KubernetesManifest@0
+#             inputs:
+#               action: 'deploy'
+#               namespace: 'default'
+#               manifests: '$(Pipeline.Workspace)/manifests/horror-movies.yaml'
+#               containers: |
+#                 $(imageRepo):$(tag)

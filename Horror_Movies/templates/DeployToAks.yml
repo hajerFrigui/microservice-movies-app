@@ -1,0 +1,8 @@
+steps:
+    - task: KubernetesManifest@0
+      inputs:
+        action: 'deploy'
+        namespace: ${{ parameters.k8snamespace }}
+        manifests: ${{ parameters.manifests }}
+        containers: |
+            ${{ parameters.imageRepo }}:${{ parameters.tag }}

@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: movies-configmap
+data:
+   horror_movies_url: "http://horror-movies-service:4000"
+   action_movies_url: "http://action-movies-service:7000"
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec: 
+      containers:
+        - name: frontend-gateway    
+          image: hajer23/gateway:v8
+          imagePullPolicy: IfNotPresent
+          
+          resources:
+            limits:
+              memory: "250Mi"
+              cpu: "125m"
+            requests:
+              memory: "125Mi"
+              cpu: "80m"
+          ports:
+            - containerPort: 80
+
+            #mount voulumes from pods to container
+      #     volumeMounts:
+      #       - name: movies-config
+      #         mountPath: /var/www/html
+              
+      # volumes:
+      #   - name: movies-config #name of the volume inside the pod
+      #     configMap:
+      #       name: movies-configmap-file #we want to mount in it the config file
+
+          env:
+            - name: HORROR_MOVIES
+              valueFrom: 
+                configMapKeyRef:
+                  name: movies-configmap #name of the configMap(metadata)
+                  key: horror_movies_url
+            - name: ACTION_MOVIES
+              valueFrom: 
+                  configMapKeyRef:
+                    name: movies-configmap #name of the configMap(metadata)
+                    key: action_movies_url
+
+          # env:
+          #  - name: HORROR_MOVIES
+          #    value: horror-movies-service
+          #  - name: ACTION_MOVIES
+          #    value: action-movies-service
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-gateway-service
+spec:
+  # type: NodePort
+  type: ClusterIP
+  #selector is the one which tells where the service should map(which are the group of pod that shol have this service)
+  selector:
+    app: frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80 #the same as containerPort
+    
+
+#container port and target port must be the same
+#selector of the service and labels in the deployment must be the same to connect the deploy and the service together

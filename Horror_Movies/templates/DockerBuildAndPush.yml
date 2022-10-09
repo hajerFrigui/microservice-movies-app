@@ -1,0 +1,15 @@
+        steps:
+          - task: Docker@2
+            displayName: Docker Login
+            inputs:
+              containerRegistry: ${{ parameters.DockerHubConnection}}
+              command: 'login'
+            
+          - bash: docker build -t ${{ parameters.imageRepo }}:${{parameters.tag}} .
+            failOnStderr: true
+            displayName: "Build Image"
+
+          - bash: docker push ${{ parameters.imageRepo }}:${{parameters.tag}}
+            displayName: " Push Image to DockerHub"
+ 
+            
